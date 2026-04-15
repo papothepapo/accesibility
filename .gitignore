@@ -1,0 +1,12 @@
+.gradle/
+.gradle-home/
+.android-home/
+.home/
+.toolchain/
+build/
+app/build/
+local.properties
+
+# Other local workspace folders on this device.
+/inkline/
+/touchcam/
