@@ -41,5 +41,3 @@ adb shell pm grant com.exalt.accessibilityswitcher android.permission.WRITE_SECU
 ```
 
 Open the app, choose `Permissions`, and enable Usage Access for Exalt Accessibility Switcher. The app includes buttons for Usage Access, Accessibility settings, diagnostics, automation on/off, and hold-current-service mode.
-
-No part of this project disables, uninstalls, or changes Techloq.
