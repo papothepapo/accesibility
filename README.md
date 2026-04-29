@@ -41,3 +41,4 @@ adb shell pm grant com.exalt.accessibilityswitcher android.permission.WRITE_SECU
 ```
 
 Open the app, choose `Permissions`, and enable Usage Access for Exalt Accessibility Switcher. The app includes buttons for Usage Access, Accessibility settings, diagnostics, automation on/off, and hold-current-service mode.
+adb shell appops set com.android.testapp reusage access (not exact command google it)
