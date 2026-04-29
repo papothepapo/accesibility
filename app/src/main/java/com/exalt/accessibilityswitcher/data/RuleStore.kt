@@ -31,6 +31,8 @@ class RuleStore(context: Context) {
         return rules
     }
 
+    fun getRulesVersion(): String = prefs.getString(KEY_RULES, "[]") ?: "[]"
+
     fun saveRules(rules: List<ManagedRule>) {
         val array = JSONArray()
         rules.forEach { rule ->
@@ -42,7 +44,7 @@ class RuleStore(context: Context) {
                     .put(FIELD_ENABLED, rule.enabled)
             )
         }
-        prefs.edit().putString(KEY_RULES, array.toString()).apply()
+        putStringIfChanged(KEY_RULES, array.toString())
     }
 
     fun newRule(packageName: String, serviceComponent: String, enabled: Boolean = true): ManagedRule {
@@ -57,31 +59,43 @@ class RuleStore(context: Context) {
     fun isAutomationEnabled(): Boolean = prefs.getBoolean(KEY_AUTOMATION_ENABLED, false)
 
     fun setAutomationEnabled(enabled: Boolean) {
-        prefs.edit().putBoolean(KEY_AUTOMATION_ENABLED, enabled).apply()
+        putBooleanIfChanged(KEY_AUTOMATION_ENABLED, enabled)
     }
 
     fun isHoldEnabled(): Boolean = prefs.getBoolean(KEY_HOLD_ENABLED, false)
 
     fun setHoldEnabled(enabled: Boolean) {
-        prefs.edit().putBoolean(KEY_HOLD_ENABLED, enabled).apply()
+        putBooleanIfChanged(KEY_HOLD_ENABLED, enabled)
     }
 
     fun getLastActivePackage(): String = prefs.getString(KEY_LAST_ACTIVE_PACKAGE, "") ?: ""
 
     fun setLastActivePackage(packageName: String) {
-        prefs.edit().putString(KEY_LAST_ACTIVE_PACKAGE, packageName).apply()
+        putStringIfChanged(KEY_LAST_ACTIVE_PACKAGE, packageName)
     }
 
     fun getLastAppliedService(): String = prefs.getString(KEY_LAST_APPLIED_SERVICE, "") ?: ""
 
     fun setLastAppliedService(serviceComponent: String) {
-        prefs.edit().putString(KEY_LAST_APPLIED_SERVICE, serviceComponent).apply()
+        putStringIfChanged(KEY_LAST_APPLIED_SERVICE, serviceComponent)
     }
 
     fun getLastError(): String = prefs.getString(KEY_LAST_ERROR, "") ?: ""
 
     fun setLastError(message: String) {
-        prefs.edit().putString(KEY_LAST_ERROR, message).apply()
+        putStringIfChanged(KEY_LAST_ERROR, message)
+    }
+
+    private fun putStringIfChanged(key: String, value: String) {
+        if (prefs.getString(key, null) != value) {
+            prefs.edit().putString(key, value).apply()
+        }
+    }
+
+    private fun putBooleanIfChanged(key: String, value: Boolean) {
+        if (prefs.getBoolean(key, !value) != value) {
+            prefs.edit().putBoolean(key, value).apply()
+        }
     }
 
     companion object {
