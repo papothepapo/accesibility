@@ -82,27 +82,23 @@ class MainActivity : Activity() {
         statusText = TextView(this).apply {
             setTextColor(COLOR_MUTED)
             textSize = 13f
-            maxLines = 3
+            maxLines = 2
             ellipsize = TextUtils.TruncateAt.END
             includeFontPadding = false
-            setPadding(0, dp(6), 0, dp(8))
+            setPadding(0, dp(4), 0, dp(6))
         }
         root.addView(statusText, LinearLayout.LayoutParams(matchParent(), wrapContent()))
 
-        val modeRow = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
-        val settingsRow = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
+        val utilityRow = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
         automationButton = createButton("") { toggleAutomation() }
         holdButton = createButton("") { toggleHold() }
         val permissionsButton = createButton("Perms") { showPermissions() }
         val diagnosticsButton = createButton("Diag") { showDiagnostics() }
-        modeRow.addView(automationButton, rowButtonParams())
-        modeRow.addView(holdButton, rowButtonParams())
-        settingsRow.addView(permissionsButton, rowButtonParams())
-        settingsRow.addView(diagnosticsButton, rowButtonParams())
-        root.addView(modeRow, LinearLayout.LayoutParams(matchParent(), wrapContent()))
-        root.addView(settingsRow, LinearLayout.LayoutParams(matchParent(), wrapContent()).apply {
-            topMargin = dp(4)
-        })
+        utilityRow.addView(automationButton, rowButtonParams())
+        utilityRow.addView(holdButton, rowButtonParams())
+        utilityRow.addView(permissionsButton, rowButtonParams())
+        utilityRow.addView(diagnosticsButton, rowButtonParams())
+        root.addView(utilityRow, LinearLayout.LayoutParams(matchParent(), wrapContent()))
 
         ruleAdapter = RuleAdapter()
         ruleList = ListView(this).apply {
@@ -112,7 +108,7 @@ class MainActivity : Activity() {
             divider = null
             isFocusable = true
             isFocusableInTouchMode = false
-            setPadding(0, dp(8), 0, dp(8))
+            setPadding(0, dp(6), 0, dp(6))
             clipToPadding = false
             setOnItemClickListener { _, _, position, _ ->
                 selectedIndex = position
@@ -134,13 +130,12 @@ class MainActivity : Activity() {
             }
         }
         root.addView(ruleList, LinearLayout.LayoutParams(matchParent(), 0, 1f).apply {
-            topMargin = dp(8)
-            bottomMargin = dp(8)
+            topMargin = dp(6)
+            bottomMargin = dp(6)
         })
 
         val firstActionRow = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
         val secondActionRow = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
-        val thirdActionRow = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
         val addButton = createButton("Add") { showRuleEditor(null) }
         editButton = createButton("Edit") { editSelectedRule() }
         toggleRuleButton = createButton("") { toggleSelectedRule() }
@@ -150,15 +145,12 @@ class MainActivity : Activity() {
 
         firstActionRow.addView(addButton, rowButtonParams())
         firstActionRow.addView(editButton, rowButtonParams())
-        secondActionRow.addView(toggleRuleButton, rowButtonParams())
+        firstActionRow.addView(toggleRuleButton, rowButtonParams())
+        secondActionRow.addView(upButton, rowButtonParams())
+        secondActionRow.addView(downButton, rowButtonParams())
         secondActionRow.addView(deleteButton, rowButtonParams())
-        thirdActionRow.addView(upButton, rowButtonParams())
-        thirdActionRow.addView(downButton, rowButtonParams())
         root.addView(firstActionRow, LinearLayout.LayoutParams(matchParent(), wrapContent()))
         root.addView(secondActionRow, LinearLayout.LayoutParams(matchParent(), wrapContent()).apply {
-            topMargin = dp(4)
-        })
-        root.addView(thirdActionRow, LinearLayout.LayoutParams(matchParent(), wrapContent()).apply {
             topMargin = dp(4)
         })
 
@@ -179,7 +171,7 @@ class MainActivity : Activity() {
             ruleList.setItemChecked(selectedIndex, true)
         }
 
-        automationButton.text = if (store.isAutomationEnabled()) "Automation On" else "Automation Off"
+        automationButton.text = if (store.isAutomationEnabled()) "Auto On" else "Auto Off"
         holdButton.text = if (store.isHoldEnabled()) "Hold On" else "Hold Off"
         statusText.text = statusSummary()
         updateRuleButtons()
@@ -210,7 +202,7 @@ class MainActivity : Activity() {
         val lastPackage = store.getLastActivePackage().ifBlank { "none" }
         val lastService = store.getLastAppliedService().ifBlank { "none" }
         val lastError = store.getLastError().ifBlank { "No diagnostics yet" }
-        return "$mode | $usage | $secure\nApp: $lastPackage\nService: ${shortComponent(lastService)} | $lastError"
+        return "$mode | $usage | $secure\nApp: $lastPackage | Service: ${shortComponent(lastService)} | $lastError"
     }
 
     private fun toggleAutomation() {
@@ -541,11 +533,11 @@ class MainActivity : Activity() {
         return Button(this).apply {
             text = textValue
             isAllCaps = false
-            textSize = 14f
+            textSize = 13f
             maxLines = 2
             ellipsize = TextUtils.TruncateAt.END
-            minHeight = dp(44)
-            minimumHeight = dp(44)
+            minHeight = dp(40)
+            minimumHeight = dp(40)
             minWidth = 0
             minimumWidth = 0
             setTextColor(Color.WHITE)
@@ -558,7 +550,7 @@ class MainActivity : Activity() {
     }
 
     private fun rowButtonParams(): LinearLayout.LayoutParams {
-        return LinearLayout.LayoutParams(0, dp(46), 1f).apply {
+        return LinearLayout.LayoutParams(0, dp(42), 1f).apply {
             leftMargin = dp(2)
             rightMargin = dp(2)
         }
@@ -630,13 +622,13 @@ class MainActivity : Activity() {
 
         override fun getView(position: Int, convertView: View?, parent: ViewGroup): View {
             val textView = (convertView as? TextView) ?: TextView(this@MainActivity).apply {
-                textSize = 15f
-                minHeight = dp(54)
+                textSize = 14f
+                minHeight = dp(48)
                 gravity = Gravity.CENTER_VERTICAL
                 maxLines = 2
                 ellipsize = TextUtils.TruncateAt.END
                 includeFontPadding = false
-                setPadding(dp(10), dp(7), dp(10), dp(7))
+                setPadding(dp(8), dp(6), dp(8), dp(6))
             }
             val rule = data[position]
             val enabled = if (rule.enabled) "ON" else "OFF"

@@ -13,8 +13,8 @@ import android.os.Build
 import android.os.Handler
 import android.os.HandlerThread
 import android.os.IBinder
-import android.os.Looper
 import android.os.PowerManager
+import android.os.SystemClock
 import com.exalt.accessibilityswitcher.R
 import com.exalt.accessibilityswitcher.data.RuleStore
 import com.exalt.accessibilityswitcher.model.ManagedRule
@@ -37,6 +37,7 @@ class MonitorService : Service() {
     private var screenInteractive = true
     private var lastObservedPackage: String? = null
     private var lastResolvedPackage: String? = null
+    private var lastResolvedAtMillis: Long = 0L
     private var cachedRules: List<ManagedRule> = emptyList()
     private var cachedRulesVersion: String = ""
 
@@ -44,16 +45,21 @@ class MonitorService : Service() {
         override fun onReceive(context: Context, intent: Intent) {
             when (intent.action) {
                 Intent.ACTION_SCREEN_OFF -> {
-                    screenInteractive = false
                     handler.removeCallbacks(pollRunnable)
-                    store.setLastError("Screen off; monitor idle")
+                    handler.post {
+                        screenInteractive = false
+                        handler.removeCallbacks(pollRunnable)
+                        store.setLastError("Screen off; monitor idle")
+                    }
                 }
                 Intent.ACTION_SCREEN_ON,
                 Intent.ACTION_USER_PRESENT -> {
-                    screenInteractive = true
-                    lastObservedPackage = null
-                    lastResolvedPackage = null
-                    scheduleNextPoll(0L)
+                    handler.post {
+                        screenInteractive = true
+                        handler.removeCallbacks(pollRunnable)
+                        clearResolvedPackage()
+                        scheduleNextPoll(0L)
+                    }
                 }
             }
         }
@@ -91,7 +97,7 @@ class MonitorService : Service() {
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         handler.removeCallbacks(pollRunnable)
         lastObservedPackage = null
-        lastResolvedPackage = null
+        clearResolvedPackage()
         scheduleNextPoll(0L)
         return START_STICKY
     }
@@ -144,7 +150,11 @@ class MonitorService : Service() {
         }
 
         val rules = getCachedRules()
-        if (packageName == lastObservedPackage && packageName == lastResolvedPackage) {
+        if (
+            packageName == lastObservedPackage &&
+            packageName == lastResolvedPackage &&
+            !shouldRecheckResolvedPackage()
+        ) {
             return
         }
         lastObservedPackage = packageName
@@ -154,47 +164,54 @@ class MonitorService : Service() {
             return
         }
 
-        if (packageName == lastResolvedPackage) {
+        if (packageName == lastResolvedPackage && !shouldRecheckResolvedPackage()) {
             return
         }
 
         when (val resolution = resolver.resolve(rules, packageName)) {
             RuleResolver.Resolution.KeepCurrent -> {
-                lastResolvedPackage = packageName
+                markResolvedPackage(packageName)
                 store.setLastError("No matching enabled rule; keeping current service")
             }
             is RuleResolver.Resolution.SwitchTo -> {
-                lastResolvedPackage = packageName
-                applyService(resolution.serviceComponent)
+                if (applyService(resolution.serviceComponent)) {
+                    markResolvedPackage(packageName)
+                } else {
+                    clearResolvedPackage()
+                }
             }
         }
     }
 
-    private fun applyService(serviceComponent: String) {
+    private fun applyService(serviceComponent: String): Boolean {
         val result = try {
             settingsWriter.applySelectedService(serviceComponent)
         } catch (error: SecurityException) {
             store.setLastError("Secure settings write denied: ${error.message.orEmpty()}")
-            return
+            return false
         } catch (error: RuntimeException) {
             store.setLastError("Secure settings write failed: ${error.message.orEmpty()}")
-            return
+            return false
         }
 
-        when (result) {
+        return when (result) {
             is AccessibilitySettingsWriter.WriteResult.Changed -> {
                 store.setLastAppliedService(result.serviceComponent)
                 store.setLastError("Applied ${result.serviceComponent}")
+                true
             }
             is AccessibilitySettingsWriter.WriteResult.NoChange -> {
                 store.setLastAppliedService(result.serviceComponent)
                 store.setLastError("Already active: ${result.serviceComponent}")
+                true
             }
             is AccessibilitySettingsWriter.WriteResult.InvalidComponent -> {
                 store.setLastError("Invalid service component: ${result.attemptedComponent}")
+                true
             }
             is AccessibilitySettingsWriter.WriteResult.Failed -> {
                 store.setLastError(result.reason)
+                false
             }
         }
     }
@@ -268,9 +285,23 @@ class MonitorService : Service() {
         if (version != cachedRulesVersion) {
             cachedRules = store.getRules()
             cachedRulesVersion = version
-            lastResolvedPackage = null
+            clearResolvedPackage()
         }
         return cachedRules
+    }
+
+    private fun markResolvedPackage(packageName: String?) {
+        lastResolvedPackage = packageName
+        lastResolvedAtMillis = SystemClock.elapsedRealtime()
+    }
+
+    private fun clearResolvedPackage() {
+        lastResolvedPackage = null
+        lastResolvedAtMillis = 0L
+    }
+
+    private fun shouldRecheckResolvedPackage(): Boolean {
+        return SystemClock.elapsedRealtime() - lastResolvedAtMillis >= SERVICE_RECHECK_INTERVAL_MILLIS
     }
 
     private companion object {
@@ -278,6 +309,7 @@ class MonitorService : Service() {
         const val NOTIFICATION_ID = 1001
         const val SCREEN_ON_POLL_INTERVAL_MILLIS = 3500L
         const val SCREEN_OFF_POLL_INTERVAL_MILLIS = 60000L
+        const val SERVICE_RECHECK_INTERVAL_MILLIS = 60000L
         const val FOREGROUND_LOOKBACK_MILLIS = 15000L
     }
 }
